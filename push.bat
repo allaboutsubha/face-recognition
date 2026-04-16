@@ -1,0 +1,9 @@
+@echo off
+set /p msg="Enter commit message: "
+git add .
+git commit -m "%msg%"
+git push origin main
+echo.
+echo Done! Closing in 3 seconds...
+timeout /t 3 >nul
+exit
