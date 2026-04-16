@@ -1,11 +1,13 @@
+from flask import Flask, render_template, Response
 import cv2
 import mediapipe as mp
-# এরর হ্যান্ডেল করার জন্য সরাসরি ইমপোর্ট করার চেষ্টা
-from mediapipe.python.solutions import face_mesh as mp_face_mesh
 
-# তারপর কোডে ব্যবহার করুন:
+# ১. প্রথমেই app ডিফাইন করতে হবে (এটি মিস হয়েছিল হয়তো)
+app = Flask(__name__)
+
+# ২. Mediapipe সেটআপ
+mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
-    static_image_mode=False,
     max_num_faces=1,
     refine_landmarks=True,
     min_detection_confidence=0.5,
@@ -20,24 +22,23 @@ def generate_frames():
         if not success:
             break
         else:
-            # ইমেজ প্রসেসিং (Anti-spoofing logic এখানে যোগ হবে)
+            # ইমেজ প্রসেসিং
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(rgb_frame)
 
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
-                    # উদাহরণস্বরূপ একটি বক্স ড্র করা
-                    h, w, c = frame.shape
-                    cv2.rectangle(frame, (50, 50), (w-50, h-50), (0, 255, 0), 2)
-                    cv2.putText(frame, "Liveness: Active", (60, 40), 
+                    # ফেস ডিটেকশন বক্স বা ল্যান্ডমার্ক দেখানোর কোড
+                    cv2.putText(frame, "Pro AI: Tracking...", (10, 30), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
-            # ফ্রেমকে ব্রাউজারে পাঠানোর জন্য এনকোড করা
+            # ফ্রেম এনকোডিং
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
+# ৩. এরপর রুটগুলো ডিফাইন করতে হবে
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -46,5 +47,6 @@ def index():
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# ৪. সবশেষে রান করানো
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
